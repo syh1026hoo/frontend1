@@ -23,6 +23,9 @@ export default function Watchlist() {
   const [popularEtfs, setPopularEtfs] = useState<PopularEtf[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasCheckedLogin, setHasCheckedLogin] = useState(false);
+  const [addingToWatchlist, setAddingToWatchlist] = useState<string | null>(null);
+  const [removingFromWatchlist, setRemovingFromWatchlist] = useState<number | null>(null);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
 
   useEffect(() => {
     checkLoginStatus();
@@ -166,6 +169,7 @@ export default function Watchlist() {
   const removeFromWatchlist = async (watchlistId: number) => {
     if (!currentUser) return;
 
+    setRemovingFromWatchlist(watchlistId);
     try {
       const response = await watchlistApi.removeFromWatchlist(watchlistId);
       if (response.data.success) {
@@ -177,6 +181,8 @@ export default function Watchlist() {
     } catch (error) {
       console.error('Remove failed:', error);
       showToast('삭제 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setRemovingFromWatchlist(null);
     }
   };
 
@@ -186,6 +192,13 @@ export default function Watchlist() {
       return;
     }
 
+    // 중복 체크
+    if (isAlreadyInWatchlist(isinCd)) {
+      showToast('이미 관심종목에 추가된 ETF입니다.', 'info');
+      return;
+    }
+
+    setAddingToWatchlist(isinCd);
     try {
       const response = await watchlistApi.addToWatchlist({
         userId: currentUser.id,
@@ -202,6 +215,8 @@ export default function Watchlist() {
     } catch (error) {
       console.error('Add to watchlist failed:', error);
       showToast('관심종목 추가 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setAddingToWatchlist(null);
     }
   };
 
@@ -211,9 +226,15 @@ export default function Watchlist() {
     }
   };
 
+  // 이미 관심종목에 있는지 확인하는 함수
+  const isAlreadyInWatchlist = (isinCd: string): boolean => {
+    return watchlist.some(item => item.etfInfo.isinCd === isinCd);
+  };
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    // 간단한 토스트 알림 (실제로는 toast 라이브러리 사용 권장)
-    alert(message);
+    setToast({ message, type });
+    // 3초 후 토스트 숨기기
+    setTimeout(() => setToast(null), 3000);
   };
 
   // 로그인 상태 확인이 완료되지 않았거나 로딩 중인 경우
@@ -282,13 +303,28 @@ export default function Watchlist() {
                 <div key={etf.isinCd} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-orange-600">#{index + 1}</span>
-                    <button
-                      onClick={() => addToWatchlistFromPopular(etf.isinCd)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                      title="관심종목에 추가"
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
+                    {isAlreadyInWatchlist(etf.isinCd) ? (
+                      <span className="text-green-500" title="이미 관심종목에 추가됨">
+                        <HeartIcon className="h-4 w-4 fill-current" />
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => addToWatchlistFromPopular(etf.isinCd)}
+                        disabled={addingToWatchlist === etf.isinCd}
+                        className={`${
+                          addingToWatchlist === etf.isinCd 
+                            ? 'text-gray-300 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-red-500 hover:scale-110'
+                        } transition-all duration-200`}
+                        title={addingToWatchlist === etf.isinCd ? '추가 중...' : '관심종목에 추가'}
+                      >
+                        {addingToWatchlist === etf.isinCd ? (
+                          <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        ) : (
+                          <PlusIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
                   <h4 className="font-medium text-gray-900 mb-1 text-sm">{etf.itmsNm}</h4>
                   <div className="text-xs text-gray-500 mb-2">{etf.srtnCd}</div>
@@ -390,10 +426,19 @@ export default function Watchlist() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => removeFromWatchlist(item.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        title="관심종목에서 삭제"
+                        disabled={removingFromWatchlist === item.id}
+                        className={`${
+                          removingFromWatchlist === item.id
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-red-600 hover:text-red-800 hover:scale-110'
+                        } transition-all duration-200`}
+                        title={removingFromWatchlist === item.id ? '삭제 중...' : '관심종목에서 삭제'}
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        {removingFromWatchlist === item.id ? (
+                          <div className="h-4 w-4 border-2 border-gray-400 border-t-gray-600 rounded-full animate-spin" />
+                        ) : (
+                          <TrashIcon className="h-4 w-4" />
+                        )}
                       </button>
                     </td>
                   </tr>
