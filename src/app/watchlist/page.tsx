@@ -86,12 +86,22 @@ export default function Watchlist() {
     try {
       setLoadingState('loading');
       
-      // 병렬로 데이터 로드
-      const [watchlistRes, popularRes] = await Promise.all([
-        loadWatchlist(user.id),
-        loadPopularEtfs()
-      ]);
-
+      console.log('관심종목 데이터 로드 시작, 사용자:', user);
+      
+      // 관심종목과 인기 ETF를 개별적으로 로드 (하나가 실패해도 다른 것은 성공하도록)
+      const watchlistPromise = loadWatchlist(user.id).catch(err => {
+        console.error('관심종목 로드 실패:', err);
+        return null;
+      });
+      
+      const popularPromise = loadPopularEtfs().catch(err => {
+        console.error('인기 ETF 로드 실패:', err);
+        return null;
+      });
+      
+      await Promise.all([watchlistPromise, popularPromise]);
+      
+      console.log('모든 데이터 로드 완료');
       setLoadingState('success');
     } catch (error) {
       console.error('Data loading failed:', error);
@@ -115,18 +125,38 @@ export default function Watchlist() {
   const loadPopularEtfs = async () => {
     try {
       console.log('인기 ETF 로딩 시작...');
+      console.log('API 호출 URL:', '/api/watchlist/popular?limit=5');
       const response = await watchlistApi.getPopularEtfs();
-      console.log('인기 ETF API 응답:', response.data);
+      console.log('인기 ETF API 전체 응답:', response);
+      console.log('인기 ETF API 응답 데이터:', response.data);
+      console.log('응답 데이터 타입:', typeof response.data);
+      console.log('응답 데이터가 배열인가?', Array.isArray(response.data));
       
-      if (response.data.success) {
-        setPopularEtfs(response.data.data || []);
-        console.log('인기 ETF 데이터 설정 완료:', response.data.data);
+      // 배열이 직접 반환되는 경우 처리
+      if (Array.isArray(response.data)) {
+        console.log('✅ 배열 형태의 응답 감지, 직접 처리');
+        setPopularEtfs(response.data);
+        console.log('✅ 인기 ETF 데이터 설정 완료 (배열):', response.data);
+        return { success: true, data: response.data };
+      }
+      
+      // 일반적인 {success, data} 구조인 경우
+      console.log('성공 여부:', response.data?.success);
+      console.log('데이터:', response.data?.data);
+      console.log('메시지:', response.data?.message);
+      
+      if (response.data && response.data.success) {
+        const etfData = response.data.data || [];
+        setPopularEtfs(etfData);
+        console.log('✅ 인기 ETF 데이터 설정 완료 (객체):', etfData);
         return response.data;
       } else {
-        console.log('인기 ETF API 실패:', response.data.message);
+        console.log('❌ 인기 ETF API 실패:', response.data?.message || 'Unknown error');
+        console.log('전체 응답:', response);
       }
     } catch (error) {
-      console.error('Popular ETFs load failed:', error);
+      console.error('❌ Popular ETFs load failed:', error);
+      console.error('Error details:', error.response?.data);
     }
     return null;
   };
