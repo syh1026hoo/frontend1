@@ -61,28 +61,48 @@ export default function Login() {
     setIsLoading(true);
     try {
       const response = await userApi.login(loginData);
-      console.log('Login response:', response.data); // 디버깅용
+      console.log('=== 로그인 API 응답 전체 ===');
+      console.log('전체 응답:', response);
+      console.log('응답 데이터:', response.data);
+      console.log('성공 여부:', response.data.success);
+      console.log('사용자 데이터 (data 필드):', response.data.data);
+      console.log('사용자 데이터 (user 필드):', response.data.user);
+      console.log('user 필드 타입:', typeof response.data.user);
       
       if (response.data.success) {
-        const userData = response.data.data;
-        console.log('Login successful, saving user data:', userData); // 디버깅용
+        // 백엔드에서는 'user' 필드로 사용자 데이터를 반환
+        const userData = response.data.user; // data가 아니라 user 필드
+        console.log('=== 로그인 성공 ===');
+        console.log('서버에서 받은 사용자 데이터:', userData);
         
         showAlert('로그인에 성공했습니다!', 'success');
         
         // 세션에 로그인 정보 저장
+        console.log('세션에 데이터 저장 중...');
         session.set('isLoggedIn', true);
         session.set('user', userData);
         
         // 저장 확인
-        console.log('Session after login:', {
-          isLoggedIn: session.get('isLoggedIn'),
-          user: session.get('user')
+        const savedLoginStatus = session.get('isLoggedIn');
+        const savedUser = session.get('user');
+        console.log('저장 후 세션 확인:', {
+          isLoggedIn: savedLoginStatus,
+          isLoggedInType: typeof savedLoginStatus,
+          user: savedUser,
+          userType: typeof savedUser,
+          userId: savedUser ? savedUser.id : 'no id'
         });
+        
+        // 세션 스토리지 직접 확인
+        console.log('SessionStorage 직접 확인:');
+        console.log('  isLoggedIn:', sessionStorage.getItem('isLoggedIn'));
+        console.log('  user:', sessionStorage.getItem('user'));
         
         // 페이지 새로고침으로 네비게이션 상태 업데이트
         setTimeout(() => {
+          console.log('홈페이지로 리다이렉트 중...');
           window.location.href = '/';
-        }, 500);
+        }, 1000); // 디버깅을 위해 딜레이 증가
       } else {
         showAlert(response.data.message || '로그인에 실패했습니다.', 'error');
       }
@@ -123,7 +143,11 @@ export default function Login() {
         email: registerData.email,
         password: registerData.password
       });
-      console.log('Register response:', response.data); // 디버깅용
+      console.log('=== 회원가입 API 응답 ===');
+      console.log('전체 응답:', response);
+      console.log('응답 데이터:', response.data);
+      console.log('성공 여부:', response.data.success);
+      console.log('사용자 데이터:', response.data.user);
       
       if (response.data.success) {
         showAlert('회원가입이 완료되었습니다! 로그인해주세요.', 'success');

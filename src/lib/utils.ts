@@ -79,25 +79,40 @@ export const storage = {
 // 세션 스토리지 헬퍼
 export const session = {
   get: (key: string) => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === 'undefined') {
+      console.log(`[Session] SSR 환경에서 ${key} 읽기 시도`);
+      return null;
+    }
     try {
       const item = sessionStorage.getItem(key);
-      return item ? JSON.parse(item) : null;
-    } catch {
+      const parsed = item ? JSON.parse(item) : null;
+      console.log(`[Session] ${key} 읽기:`, { raw: item, parsed: parsed });
+      return parsed;
+    } catch (error) {
+      console.error(`[Session] ${key} 읽기 실패:`, error);
       return null;
     }
   },
   set: (key: string, value: any) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      console.log(`[Session] SSR 환경에서 ${key} 저장 시도`);
+      return;
+    }
     try {
-      sessionStorage.setItem(key, JSON.stringify(value));
+      const stringified = JSON.stringify(value);
+      sessionStorage.setItem(key, stringified);
+      console.log(`[Session] ${key} 저장 성공:`, { value: value, stringified: stringified });
     } catch (error) {
-      console.error('Session storage error:', error);
+      console.error(`[Session] ${key} 저장 실패:`, error);
     }
   },
   remove: (key: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      console.log(`[Session] SSR 환경에서 ${key} 삭제 시도`);
+      return;
+    }
     sessionStorage.removeItem(key);
+    console.log(`[Session] ${key} 삭제됨`);
   },
 };
 

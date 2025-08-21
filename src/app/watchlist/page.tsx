@@ -38,29 +38,48 @@ export default function Watchlist() {
   }, []);
 
   const checkLoginStatus = () => {
+    console.log('=== 관심종목 로그인 상태 확인 시작 ===');
+    
+    // 세션 스토리지 전체 내용 확인
+    if (typeof window !== 'undefined') {
+      console.log('SessionStorage 전체 내용:');
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        const value = sessionStorage.getItem(key);
+        console.log(`  ${key}: ${value}`);
+      }
+    }
+    
     const loginStatus = session.get('isLoggedIn');
     const userData = session.get('user');
     
-    console.log('Watchlist login check:', { 
-      loginStatus, 
-      userData, 
-      sessionStorageContent: typeof window !== 'undefined' ? Object.keys(sessionStorage) : 'SSR'
-    }); // 디버깅용
+    console.log('세션에서 가져온 데이터:', { 
+      loginStatus: loginStatus,
+      loginStatusType: typeof loginStatus,
+      userData: userData,
+      userDataType: typeof userData,
+      hasUserId: userData ? userData.id : 'no user data'
+    });
     
     setHasCheckedLogin(true);
     
     // 더 엄격한 로그인 상태 확인
     if (loginStatus === true && userData && userData.id) {
-      console.log('User is logged in:', userData);
+      console.log('✅ 사용자 로그인 상태 확인됨:', userData);
       setIsLoggedIn(true);
       setCurrentUser(userData);
       setLoadingState('loading'); // 데이터를 로드하기 전에 로딩 상태로 변경
       loadAllData(userData);
     } else {
-      console.log('User is not logged in or missing data');
+      console.log('❌ 사용자 로그인되지 않음 또는 데이터 부족');
+      console.log('  - loginStatus:', loginStatus, '(예상: true)');
+      console.log('  - userData:', userData, '(예상: 사용자 객체)');
+      console.log('  - userData.id:', userData ? userData.id : 'undefined', '(예상: 숫자)');
       setIsLoggedIn(false);
       setLoadingState('success'); // 로그인 안 된 상태도 정상 상태로 처리
     }
+    
+    console.log('=== 관심종목 로그인 상태 확인 완료 ===');
   };
 
   const loadAllData = async (user: any) => {
@@ -95,10 +114,16 @@ export default function Watchlist() {
 
   const loadPopularEtfs = async () => {
     try {
-      const response = await etfApi.getPopularEtfs();
+      console.log('인기 ETF 로딩 시작...');
+      const response = await watchlistApi.getPopularEtfs();
+      console.log('인기 ETF API 응답:', response.data);
+      
       if (response.data.success) {
         setPopularEtfs(response.data.data || []);
+        console.log('인기 ETF 데이터 설정 완료:', response.data.data);
         return response.data;
+      } else {
+        console.log('인기 ETF API 실패:', response.data.message);
       }
     } catch (error) {
       console.error('Popular ETFs load failed:', error);
